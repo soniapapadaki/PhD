@@ -1,0 +1,279 @@
+---
+title: An R Markdown document converted from "1_NTU_ab_to_pseq.ipynb"
+output: html_document
+---
+
+
+### Analysis of microbial communities from totalRNA data processed using phyloFlash. ###
+
+```{r}
+# Load necessary libraries
+library(dplyr)
+library(microbiome)
+library(microViz)
+library(viridis)
+library(vegan)
+library(here)
+library(tibble)
+
+library(readr)
+library(tidyr)
+library(purrr)
+library(stringr)
+```
+
+### Scale Function to Normalize Library Sizes
+
+This function, `scale_reads`, normalizes the read counts in a phyloseq object to a specified library size `n`. It performs the following steps:
+
+1. **Transforms Counts**: Scales the read counts in each sample so that the total reads per sample equals `n`.
+2. **Rounds Counts**: Floors the scaled counts to convert them back to integers.
+3. **Removes Zero-Abundance Taxa**: Drops any taxa that have zero total abundance across all samples after scaling.
+
+This is useful for reducing library size bias while retaining proportional abundance information.
+
+```{r}
+### scale function to normalize library sizes
+scale_reads <- function(physeq, n) {
+  physeq.scale <-
+    transform_sample_counts(physeq, function(x) {
+      (n * x/sum(x))
+    })
+  otu_table(physeq.scale) <- floor(otu_table(physeq.scale))
+  physeq.scale <- prune_taxa(taxa_sums(physeq.scale) > 0, physeq.scale)
+  return(physeq.scale)
+}
+```
+
+```{r}
+# --- Taxonomic fallback filler ---
+fill_unclassified_clean <- function(df) {
+  for (i in 2:ncol(df)) {
+    for (j in 1:nrow(df)) {
+      if (is.na(df[j, i])) {
+        last_non_na <- NA
+        for (k in (i - 1):1) {
+          val <- df[j, k]
+          if (!is.na(val) && !grepl("^Unclassified", val)) {
+            last_non_na <- val
+            break
+          }
+        }
+        if (!is.na(last_non_na)) {
+          df[j, i] <- paste("Unclassified", last_non_na)
+        }
+      }
+    }
+  }
+  return(df)
+}
+
+# --- SILVAtaxopath function ---
+SILVAtaxopath <- function(tax, SILVA) {
+  rank_order <- c(
+    "domain", "superkingdom", "kingdom", "subkingdom", "major_clade",
+    "superphylum", "phylum", "subphylum", "infraphylum",
+    "superclass", "class", "subclass", "infraclass",
+    "superorder", "order", "suborder",
+    "superfamily", "family", "subfamily", "genus"
+  )
+  available_ranks <- intersect(rank_order, levels(SILVA$rank))
+  output <- matrix(NA, nrow = length(tax), ncol = length(available_ranks))
+  colnames(output) <- available_ranks
+  for (i in seq_along(tax)) {
+    for (j in seq_along(tax[[i]])) {
+      path_j <- paste(tax[[i]][1:j], collapse = ";")
+      match_idx <- which(SILVA$path == path_j)
+      if (length(match_idx) > 0) {
+        rank_j <- as.character(SILVA$rank[match_idx])
+        node_j <- as.character(SILVA$node[match_idx])
+        if (rank_j %in% available_ranks) {
+          output[i, rank_j] <- node_j
+        }
+      }
+    }
+  }
+  return(output)
+}
+```
+
+```{r}
+# Step 1: List all .csv files
+all_paths <- list.files(
+  path = here("C:/Users/PC/Desktop/euk_phyloflash/phyloflash_NTUabundance_files"),
+  pattern = "\\.csv$",
+  full.names = TRUE
+)
+
+if (length(all_paths) == 0) stop("No CSV files found.")
+
+# Step 2: Extract sample names
+sample_names <- all_paths %>%
+  basename() %>%
+  sub("\\.phyloFlash\\.NTUabundance\\.csv$", "", .)
+
+# Step 3: Read and label each file
+all_content <- Map(function(file, sample) {
+  df <- read_csv(file, col_names = c("Tax", sample), col_types = cols())
+  return(df)
+}, all_paths, sample_names)
+
+# Step 4: Merge on taxonomy column
+NTUtable <- reduce(all_content, full_join, by = "Tax")
+
+# Preserve the "taxon" column name
+new_colnames <- colnames(NTUtable)
+sample_cols <- new_colnames[-1]  # exclude 'taxon'
+
+# Rename each sample column from S2301C to S23_01_C
+renamed_samples <- gsub("^S(\\d{2})(\\d{2})([A-Za-z])$", "S\\1_\\2_\\3", sample_cols)
+
+# Combine with the unchanged first column name
+colnames(NTUtable) <- c("Tax", renamed_samples)
+
+# Step 5: Replace NAs with 0
+NTUtable[is.na(NTUtable)] <- 0
+```
+
+```{r}
+head(NTUtable)
+```
+
+```{r}
+# --- Step 2: Run SILVAtaxopath for taxonomy parsing ---
+taxpaths <- NTUtable$Tax
+tax_split <- strsplit(taxpaths, ";")
+
+silva_raw <- read.table("C:/Users/PC/Desktop/euk_phyloflash/tax_slv_ssu_138.2.txt", sep = "\t", header = FALSE, stringsAsFactors = FALSE)
+silva_map <- data.frame(
+  path = gsub(";$", "", silva_raw$V1),
+  node = sapply(strsplit(silva_raw$V1, ";"), function(x) x[length(x)]),
+  rank = silva_raw$V3,
+  stringsAsFactors = TRUE
+)
+
+taxonomy_matrix <- SILVAtaxopath(tax_split, silva_map)
+taxonomy_df <- as.data.frame(taxonomy_matrix, stringsAsFactors = FALSE)
+
+# --- Step 3: Remove unwanted groups ---
+taxonomy_df_filtered <- taxonomy_df %>%
+  filter(
+    domain %in% c("Bacteria", "Archaea"),
+    if_any(everything(), ~ !(. %in% c("Chloroplast", "Mitochondria")))
+  )
+
+# --- Step 4: Apply unclassified fallback logic ---
+taxonomy_filled <- fill_unclassified_clean(taxonomy_df_filtered)
+
+# --- Step 5: Match taxonomy_filled back to NTUtable (by row) ---
+NTUtable_filtered <- NTUtable[rownames(taxonomy_df_filtered), ]
+
+# --- Step 6: Combine final taxonomy + abundance table ---
+final_16S_table <- bind_cols(taxonomy_filled, NTUtable_filtered[, -1])  # remove raw "Tax" column
+
+# Step 7: Add OTU ID
+otu_ids <- paste0("OTU", seq_len(nrow(taxonomy_filled)))
+
+# Step 8: Select only desired taxonomy columns
+desired_tax_cols <- c("domain", "major_clade", "kingdom", "phylum", "class", "order", "family", "genus")
+taxonomy_selected <- taxonomy_filled[, desired_tax_cols, drop = FALSE]
+
+# Step 8.5: Rename taxonomy columns to desired format
+colnames(taxonomy_selected) <- c(
+  "Domain", "Major Clade", "Kingdom", "Phylum", "Class", 
+  "Order", "Family", "Genus"
+)
+
+# Step 8.6: Add Species column
+taxonomy_selected$Species <- ifelse(
+  !is.na(taxonomy_selected$Genus) & !grepl("^Unclassified", taxonomy_selected$Genus),
+  paste("Unclassified", taxonomy_selected$Genus),
+  "Unclassified"
+)
+
+# Step 9: Combine final taxonomy + abundance + OTU ID
+final_16S_table <- bind_cols(data.frame(otu_id = otu_ids), taxonomy_selected, NTUtable_filtered[, -1])
+
+# --- Step 8: Done ---
+head(final_16S_table)
+```
+
+```{r}
+write.csv(final_16S_table, file="NTU_combined_prok.csv")
+```
+
+```{r}
+taxonomy_short = c("Domain", "Major Clade", "Kingdom", "Phylum", "Class", "Order", "Family", "Genus", "Species")
+
+tax <- final_16S_table %>%
+  select(all_of(taxonomy_short), otu_id) %>%
+  column_to_rownames(var = "otu_id") %>%
+  as.matrix()
+
+otu <- final_16S_table %>%
+  select(-all_of(taxonomy_short)) %>%
+  column_to_rownames(var = "otu_id") %>%
+  as.matrix()
+```
+
+```{r}
+head(tax)
+```
+
+```{r}
+head(otu)
+```
+
+```{r}
+#create sample data
+SAMPLE_table <- read.csv(file = here("C:/Users/PC/Desktop/euk_phyloflash/metadata.csv"), header = TRUE, row.names = 1,sep = "\t")
+SAMPLE_DATA <- sample_data(SAMPLE_table)
+
+# Extract, transform, and reassign row names
+rownames(SAMPLE_DATA) <- gsub(
+  "^S(\\d{2})(\\d{2})([A-Za-z])$", "S\\1_\\2_\\3",
+  rownames(SAMPLE_DATA)
+)
+```
+
+```{r}
+SAMPLE_DATA
+```
+
+```{r}
+# Check OTU table names vs mapping file names (if they don't match, samples won't be included in final phyloseq object)
+all(colnames(otu) %in% rownames(SAMPLE_DATA))
+```
+
+```{r}
+PHYSEQ <- phyloseq(
+  otu_table(otu, taxa_are_rows = TRUE),
+  tax_table(tax),
+  SAMPLE_DATA
+)
+```
+
+```{r}
+sample_data(PHYSEQ)
+```
+
+```{r}
+pseq_clean <- PHYSEQ 
+```
+
+```{r}
+save(pseq_clean, file = "./Fixed_ps.RData")
+
+otu_table(pseq_clean) %>%
+  as.data.frame() %>%
+  rownames_to_column("id") %>%
+  left_join(tax_table(pseq_clean) %>% as.data.frame() %>% rownames_to_column("id")) %>%
+  write.csv(file = here("phyloseq_biom_16S.csv"), row.names = FALSE)
+```
+library(microeco)
+
+saveRDS(pseq_clean, file = "16S_phyloflash.rds")
+
+
+
+
