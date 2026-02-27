@@ -291,7 +291,7 @@ p_pcoa_full_with_arrows <- run_envfit(pcoa_scores = p3$res_ordination$scores,
                                       ea_wide2_subset = ea_wide2,
                                       output_prefix = "euk")
 
-### Run envfit on only Endolith samples
+### Run envfit on only endolith samples
 ea_wide2_endo <- ea_wide2 %>% filter(sample_type == "Endolith")
 p_pcoa_endo_with_arrows <- run_envfit(pcoa_scores = p3$res_ordination$scores,
                                       ea_wide2_subset = ea_wide2_endo,
