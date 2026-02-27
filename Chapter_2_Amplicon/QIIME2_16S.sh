@@ -1,9 +1,18 @@
+###############################################
+# QIIME2 (16S amplicon sequencing)
+#
+# Description:
+#   Workflow for sequence quality control, ASV identification, and taxonomic 
+#	classification with 16S rRNA amplicon sequencing data.
+#
+# Notes:
+#   This script is adapted from the QIIME Moving Pictures Tutorial:
+#   https://docs.qiime2.org/2024.10/tutorials/moving-pictures/
+###############################################
 
 #!/bin/bash
 
-# Workflow for sequence quality control, ASV identification, and taxonomic classification
-
-##IMPORTING DATA
+## IMPORTING DATA
 
 #Create new directory
 mkdir endoliths_sc_16S
@@ -21,7 +30,7 @@ qiime demux summarize \
 --i-data paired-end-demux.qza \
 --o-visualization paired-end-demux.qzv
 
-##SEQUENCE QUALITY CONTROL AND FEATURE TABLE CONSTRUCTION
+## SEQUENCE QUALITY CONTROL AND FEATURE TABLE CONSTRUCTION
 
 #DADA2 
 qiime dada2 denoise-paired \
@@ -48,7 +57,7 @@ qiime feature-table tabulate-seqs \
 --i-data rep-seqs.qza \
 --o-visualization rep-seqs.qzv
 
-##TAXONOMIC CLASSIFICATION
+## TAXONOMIC CLASSIFICATION
 
 #extract reference reads from SILVA 138 database
 qiime feature-classifier extract-reads \
@@ -80,7 +89,7 @@ qiime taxa barplot \
 --m-metadata-file endolith_metadata.tsv \
 --o-visualization taxa-bar-plots.qzv
 
-##FILTER OUT MITOCHONDRIA, CHLOROPLASTS, EUKARYOTES, AND UNASSIGNED FOR 16S
+## FILTER OUT MITOCHONDRIA, CHLOROPLASTS, EUKARYOTES, AND UNASSIGNED FOR 16S
 qiime taxa filter-table \
   --i-table table.qza \
   --i-taxonomy taxonomy.qza \
@@ -109,7 +118,7 @@ qiime feature-table tabulate-seqs \
   --i-data rep-seqs-filtered.qza \
   --o-visualization rep-seqs-filtered.qzv
   
-##PRODUCE RELATIVE ABUNDANCE PLOTS FOR TOP 4 PHYLA
+## PRODUCE RELATIVE ABUNDANCE PLOTS FOR TOP 4 PHYLA
 
 #cyanobacteria
 qiime taxa filter-table \
@@ -195,7 +204,7 @@ qiime taxa filter-seqs \
   --p-include p__Bacteroidota \
   --o-filtered-sequences rep-seqs-filtered-only-bda.qza
 
-##GENERATE PHYLOGENETIC TREE
+## GENERATE PHYLOGENETIC TREE
 qiime phylogeny align-to-tree-mafft-fasttree \
 --i-sequences rep-seqs-filtered.qza \
 --o-alignment aligned-rep-seqs.qza \
@@ -203,7 +212,7 @@ qiime phylogeny align-to-tree-mafft-fasttree \
 --o-tree unrooted-tree.qza \
 --o-rooted-tree rooted-tree.qza
 
-##ALPHA RAREFACTION - choosing max depth based on median in table-filtered.qzv
+## ALPHA RAREFACTION - choosing max depth based on median in table-filtered.qzv
 qiime diversity alpha-rarefaction \
 --i-table table-filtered.qza \
 --i-phylogeny rooted-tree.qza \
@@ -219,7 +228,7 @@ qiime diversity alpha-rarefaction \
 --p-steps 20 \
 --o-visualization alpha-rarefaction-eachsample.qzv
 
-##ALPHA AND BETA DIVERSITY ANALYSIS
+## ALPHA AND BETA DIVERSITY ANALYSIS
 
 #Generate core diversity metrics, using a sampling depth based on alpha rarefaction curve
 qiime diversity core-metrics-phylogenetic \
@@ -255,7 +264,7 @@ qiime diversity beta-group-significance \
 --o-visualization core-metrics-results/unweighted-unifrac-sample-site-group-significance.qzv \
 --p-pairwise
 
-##DIFFERENTIAL ABUNDANCE TESTING WITH ANCOM-BC
+## DIFFERENTIAL ABUNDANCE TESTING WITH ANCOM-BC
 
 #Perform this test at phylum level 
 qiime taxa collapse \
@@ -295,7 +304,8 @@ qiime composition da-barplot \
 --p-level-delimiter ';' \
 --o-visualization l6-da-barplot-sample-type.qzv
 
-##EXPORTING DATA FOR R (IF USING PHYLOSEQ) - microeco can convert qiime2 files and doesn't require this step
+## EXPORTING DATA FOR R (IF USING PHYLOSEQ OR ANCOMBC) - microeco can convert qiime2 
+## files and doesn't require this step
 
 #export the ASV table into biom format, then convert to .tsv
 qiime tools export \

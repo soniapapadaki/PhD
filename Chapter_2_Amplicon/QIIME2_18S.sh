@@ -1,12 +1,20 @@
+###############################################
+# QIIME2 (18S amplicon sequencing)
+#
+# Description:
+#   Workflow for sequence quality control, ASV identification, and taxonomic 
+#	classification with 18S rRNA amplicon sequencing data.
+#
+# Notes:
+#   This script is adapted from the QIIME Moving Pictures Tutorial:
+#   https://docs.qiime2.org/2024.10/tutorials/moving-pictures/
+###############################################
 
 #!/bin/bash
 
-# Workflow for sequence quality control, ASV identification, and taxonomic classification
-
-##IMPORTING DATA
+## IMPORTING DATA
 
 #Create new directory
-
 mkdir endoliths_sc_18S
 cd endoliths_sc_18S
 
@@ -22,7 +30,7 @@ qiime demux summarize \
 --i-data paired-end-demux.qza \
 --o-visualization paired-end-demux.qzv
 
-##SEQUENCE QUALITY CONTROL AND FEATURE TABLE CONSTRUCTION
+## SEQUENCE QUALITY CONTROL AND FEATURE TABLE CONSTRUCTION
 
 ##DADA2
 
@@ -49,7 +57,7 @@ qiime feature-table tabulate-seqs \
 --i-data rep-seqs.qza \
 --o-visualization rep-seqs.qzv
 
-##TAXONOMIC CLASSIFICATION
+## TAXONOMIC CLASSIFICATION
 
 #extract reference reads from SILVA 138 database
 qiime feature-classifier extract-reads \
@@ -81,7 +89,7 @@ qiime taxa barplot \
 --m-metadata-file endolith_metadata.tsv \
 --o-visualization taxa-bar-plots.qzv
 
-##FILTER OUT BACTERIA, ARCHAEA, METAZOA, AND UNASSIGNED FOR 18S
+## FILTER OUT BACTERIA, ARCHAEA, METAZOA, AND UNASSIGNED FOR 18S
 
 qiime taxa filter-table \
   --i-table table.qza \
@@ -111,7 +119,7 @@ qiime feature-table tabulate-seqs \
   --i-data rep-seqs-filtered.qza \
   --o-visualization rep-seqs-filtered.qzv
   
-##PRODUCE RELATIVE ABUNDANCE PLOTS FOR TOP 4 PHYLA
+## PRODUCE RELATIVE ABUNDANCE PLOTS FOR TOP 4 PHYLA
 
 #ascomycota
 qiime taxa filter-table \
@@ -197,7 +205,7 @@ qiime taxa filter-seqs \
   --p-include p__Basidiomycota \
   --o-filtered-sequences rep-seqs-filtered-only-bas.qza
 
-##GENERATE PHYLOGENETIC TREE
+## GENERATE PHYLOGENETIC TREE
 qiime phylogeny align-to-tree-mafft-fasttree \
 --i-sequences rep-seqs-filtered.qza \
 --o-alignment aligned-rep-seqs-filtered.qza \
@@ -205,7 +213,7 @@ qiime phylogeny align-to-tree-mafft-fasttree \
 --o-tree unrooted-tree.qza \
 --o-rooted-tree rooted-tree.qza
 
-##ALPHA RAREFACTION - choosing max depth based on median in table-filtered.qzv
+## ALPHA RAREFACTION - choosing max depth based on median in table-filtered.qzv
 
 qiime diversity alpha-rarefaction \
 --i-table table-filtered.qza \
@@ -222,7 +230,7 @@ qiime diversity alpha-rarefaction \
 --p-steps 20 \
 --o-visualization alpha-rarefaction-eachsample.qzv
 
-##ALPHA AND BETA DIVERSITY ANALYSIS - using filtered data
+## ALPHA AND BETA DIVERSITY ANALYSIS - using filtered data
 
 #Generate core diversity metrics
 qiime diversity core-metrics-phylogenetic \
@@ -258,7 +266,7 @@ qiime diversity beta-group-significance \
 --o-visualization core-metrics-results/unweighted-unifrac-sample-site-group-significance.qzv \
 --p-pairwise
 
-##DIFFERENTIAL ABUNDANCE TESTING WITH ANCOM-BC
+## DIFFERENTIAL ABUNDANCE TESTING WITH ANCOM-BC
 
 #Perform this test at phylum level 
 qiime taxa collapse \
@@ -298,7 +306,8 @@ qiime composition da-barplot \
 --p-level-delimiter ';' \
 --o-visualization l6-da-barplot-sample-type.qzv
 
-##EXPORTING DATA FOR R (IF USING PHYLOSEQ) - microeco can convert qiime2 files and doesn't require this step
+## EXPORTING DATA FOR R (IF USING PHYLOSEQ OR ANCOMBC) - microeco can convert qiime2 
+## files and doesn't require this step
 
 #export the ASV table into biom format, then convert to .tsv
 qiime tools export \
