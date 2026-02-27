@@ -21,7 +21,6 @@ library(ggpubr)
 library(grid)
 library(gtable)
 
-
 ### IMPORT PHYLOSEQ OBJECT
 
 filename <- file.choose()
