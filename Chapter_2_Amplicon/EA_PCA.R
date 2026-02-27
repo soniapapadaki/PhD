@@ -1,45 +1,47 @@
+###############################################
+# Principal Components Analysis (Elemental Concentrations)
+#
+# Description:
+#   Runs Principal Components Analysis (PCA) on elemental concentration data
+#   across colonised gypsum, uncolonised gypsum, and soil crusts.
+###############################################
+
+### LOAD PACKAGES
+
 library(tidyverse)
 library(readr)
 library(compositions)
 library(ggrepel)
 
-# ─────────────────────────────────────────
-# 1. Import data
-# ─────────────────────────────────────────
+### IMPORT DATA
 chem     <- read.delim("EA_concentrations.csv", stringsAsFactors = FALSE)
 loq      <- read.delim("EA_LOQ.csv", stringsAsFactors = FALSE)
 metadata <- read.delim("EA_metadata.csv", stringsAsFactors = FALSE)
 
-# ─────────────────────────────────────────
-# 2. Convert all values to mg/kg
-# ─────────────────────────────────────────
+################ PCA WITH ALL SAMPLES ################
+
+### CONVERT ALL VALUES TO MG/KG
 chem <- chem %>%
   mutate(value_mgkg = case_when(
-    unit == "wt%"  ~ value_raw * 10000,   # convert wt% → mg/kg
+    unit == "wt%"  ~ value_raw * 10000,   # convert wt% to mg/kg
     unit == "mg/kg" ~ value_raw,          # already mg/kg
     TRUE ~ NA_real_
   ))
 
-# ─────────────────────────────────────────
-# 3. Replace censored values (BDL) with LOQ/sqrt(2)
-# ─────────────────────────────────────────
+### Replace BDL (below detection limit) values with LOQ/sqrt(2)
 chem <- chem %>%
   mutate(value_clean = case_when(
     BDL == "<" ~ value_mgkg / sqrt(2),
     TRUE       ~ value_mgkg
   ))
 
-# ─────────────────────────────────────────
-# 4. Pivot into wide form
-# ─────────────────────────────────────────
+### Pivot into wide form
 chem_wide <- chem %>%
   select(sampleid, element, value_clean) %>%
   pivot_wider(names_from = element,
               values_from = value_clean)
 
-# ─────────────────────────────────────────
-# 5. Add metadata
-# ─────────────────────────────────────────
+### Add metadata
 chem_wide <- chem_wide %>%
   left_join(metadata, by = "sampleid")
 
@@ -47,10 +49,7 @@ chem_wide <- chem_wide %>%
 missing_meta <- chem_wide %>% filter(is.na(sample_site) | is.na(sample_type) | is.na(method))
 missing_meta   # should be empty
 
-# ─────────────────────────────────────────
-# 6. Build compositional numeric matrix
-# (INCLUDE ONLY ELEMENT COLUMNS)
-# ─────────────────────────────────────────
+### Build compositional numeric matrix
 elem_matrix <- chem_wide %>%
   select(-sampleid, -sample_site, -sample_type, -method) %>%
   as.matrix()
@@ -58,39 +57,29 @@ elem_matrix <- chem_wide %>%
 # Make sure rows stay aligned with sampleid
 rownames(elem_matrix) <- chem_wide$sampleid
 
-# ─────────────────────────────────────────
-# 7. CLR transformation
-# ─────────────────────────────────────────
+# CLR transformation
 elem_clr <- clr(elem_matrix)
 
-# ─────────────────────────────────────────
-# 8. PCA on CLR-transformed data
-# ─────────────────────────────────────────
+### PCA on CLR-transformed data
 pca <- prcomp(elem_clr, scale = FALSE)
 
-# ─────────────────────────────────────────
-# 9. Build PCA dataframe with metadata
-# ─────────────────────────────────────────
+### Build PCA dataframe with metadata
 pca_df <- as.data.frame(pca$x) %>%
   mutate(sampleid   = rownames(elem_clr)) %>%
   left_join(metadata, by = "sampleid")
 
-# ─────────────────────────────────────────
-# 10. PCA PLOT 
-# ─────────────────────────────────────────
+### PCA PLOT 
 ggplot(pca_df, aes(PC1, PC2,
                    color = sample_site,
                    shape = sample_type)) +
   
   geom_point(size = 3, alpha = 0.9) +
   
-  # Sample labels (excluded from legend)
   geom_text_repel(aes(label = sampleid),
                   size = 3,
                   max.overlaps = Inf,
                   show.legend = FALSE) +
   
-  # Filled, print-friendly shapes
   scale_shape_manual(values = c(16, 17, 15)) +
   
   labs(
@@ -107,57 +96,41 @@ ggplot(pca_df, aes(PC1, PC2,
     legend.position = "right"
   )
 
+################ PCA WITH ONLY GYPSUM SAMPLES ################
 
-
-#######################################
-
-# ─────────────────────────────────────────
-# FILTER: Only colonised + uncolonised gypsum
-# ─────────────────────────────────────────
+### Filter for only colonised + uncolonised gypsum
 gypsum_only <- chem_wide %>%
   filter(sample_type %in% c("Colonised Gypsum", "Uncolonised Gypsum"))
 
-# ─────────────────────────────────────────
-# Build element-only matrix for gypsum
-# ─────────────────────────────────────────
+### Build element matrix for gypsum
 elem_matrix_gypsum <- gypsum_only %>%
   select(-sampleid, -sample_site, -sample_type, -method) %>%
   as.matrix()
 
 rownames(elem_matrix_gypsum) <- gypsum_only$sampleid
 
-# ─────────────────────────────────────────
-# CLR transform (compositional normalisation)
-# ─────────────────────────────────────────
+### CLR transform 
 elem_clr_gypsum <- clr(elem_matrix_gypsum)
 
-# ─────────────────────────────────────────
-# PCA on gypsum-only CLR values
-# ─────────────────────────────────────────
+### PCA on gypsum-only CLR values
 pca_gypsum <- prcomp(elem_clr_gypsum, scale = FALSE)
 
-# ─────────────────────────────────────────
-# Build PCA dataframe with metadata
-# ─────────────────────────────────────────
+### Build PCA dataframe with metadata
 pca_gypsum_df <- as.data.frame(pca_gypsum$x) %>%
   mutate(sampleid = rownames(elem_clr_gypsum)) %>%
   left_join(metadata, by = "sampleid")
 
-# ─────────────────────────────────────────
-# Gypsum-only PCA plot
-# ─────────────────────────────────────────
+### Gypsum-only PCA plot
 ggplot(pca_gypsum_df, aes(PC1, PC2,
                           color = sample_site,
                           shape = sample_type)) +
   geom_point(size = 3, alpha = 0.9) +
   
-  # Sample labels (not shown in legend)
   geom_text_repel(aes(label = sampleid),
                   size = 3,
                   max.overlaps = Inf,
                   show.legend = FALSE) +
   
-  # Manual shapes (print-safe)
   scale_shape_manual(values = c(16, 17, 15)) +
   
   labs(

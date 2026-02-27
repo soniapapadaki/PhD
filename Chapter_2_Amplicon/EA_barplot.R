@@ -1,18 +1,24 @@
+###############################################
+# Elemental Analysis Bar Plot
+#
+# Description:
+#   Produces bar plots comparing average elemental concentrations of major and 
+#   minor elements in colonised vs uncolonised gypsum.
+###############################################
+
+### LOAD PACKAGES
 library(tidyverse)
 library(readr)
 library(compositions)
 library(ggrepel)
+library(ggpubr)
 
-# ─────────────────────────────────────────
-# 1. Import data
-# ─────────────────────────────────────────
+### IMPORT DATA
 chem     <- read.delim("EA_concentrations.csv", stringsAsFactors = FALSE)
 loq      <- read.delim("EA_LOQ.csv", stringsAsFactors = FALSE)
 metadata <- read.delim("EA_metadata.csv", stringsAsFactors = FALSE)
 
-# ─────────────────────────────────────────
-# 2. Convert all values to mg/kg
-# ─────────────────────────────────────────
+### CONVERT ALL VALUES TO MG/KG
 chem <- chem %>%
   mutate(value_mgkg = case_when(
     unit == "wt%"  ~ value_raw * 10000,   # convert wt% → mg/kg
@@ -20,27 +26,20 @@ chem <- chem %>%
     TRUE ~ NA_real_
   ))
 
-# ─────────────────────────────────────────
-# 3. Replace censored values (BDL) with LOQ/sqrt(2)
-# NOTE: you already put LOQ into value_raw, so use that.
-# ─────────────────────────────────────────
+### Replace BDL (below detection limit) values with LOQ/sqrt(2)
 chem <- chem %>%
   mutate(value_clean = case_when(
     BDL == "<" ~ value_mgkg / sqrt(2),
     TRUE       ~ value_mgkg
   ))
 
-# ─────────────────────────────────────────
-# 4. Pivot into wide form
-# ─────────────────────────────────────────
+### Pivot into wide form
 chem_wide <- chem %>%
   select(sampleid, element, value_clean) %>%
   pivot_wider(names_from = element,
               values_from = value_clean)
 
-# ─────────────────────────────────────────
-# 5. Add metadata
-# ─────────────────────────────────────────
+### Add metadata
 chem_wide <- chem_wide %>%
   left_join(metadata, by = "sampleid")
 
@@ -48,26 +47,19 @@ chem_wide <- chem_wide %>%
 missing_meta <- chem_wide %>% filter(is.na(sample_site) | is.na(sample_type) | is.na(method))
 missing_meta   # should be empty
 
-
-
-### SAMPLING SITES AVERAGED
-library(tidyverse)
-library(ggpubr)
-
-# 1. Filter only Colonised and Uncolonised Gypsum
+### Filter only Colonised and Uncolonised Gypsum
 df <- chem_wide %>%
   filter(sample_type %in% c("Colonised Gypsum", "Uncolonised Gypsum"))
 
-# 2. Pivot element concentrations long
+### Pivot element concentrations long
 df_long <- df %>%
   select(sampleid, sample_type, sample_site, where(is.numeric)) %>%
   pivot_longer(cols = where(is.numeric),
                names_to = "element",
                values_to = "value") %>%
-  # Ensure consistent order for plotting
   mutate(sample_type = factor(sample_type, levels = c("Uncolonised Gypsum", "Colonised Gypsum")))
 
-# 3. Paired t-tests per element
+### Paired t-tests per element
 ttest_results <- df_long %>%
   group_by(element) %>%
   summarise(
@@ -86,11 +78,11 @@ ttest_results <- df_long %>%
     )
   )
 
-# 4. Merge significance into long dataframe
+### Merge significance into long dataframe
 df_plot <- df_long %>%
   left_join(ttest_results, by = "element")
 
-# 5. Plot: Initial plots with SE and asterisks for all elements
+### Initial plots with SE and asterisks for all elements
 ggplot(df_plot, aes(x = sample_type, y = value, fill = sample_type)) +
   
   # Bars = mean
@@ -152,8 +144,7 @@ df_summary_all <- df_plot %>%
 # View the summary table
 df_summary_all
 
-
-# 6. Plot: Clean barplots with SE and asterisks for selected elements
+### Clean barplots with SE and asterisks for selected elements
 
 #BATCH 1
 elements_to_plot <- c("Al", "As", "Ba", "C", "Ca", "Co", "Cr", "Cu", "Fe")
