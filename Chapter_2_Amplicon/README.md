@@ -4,7 +4,7 @@ Code for Chapter 2 of my doctoral thesis: "Traces of Microbial Life and Activity
 
 ## Contents
 
-| File | Description |
+| File/Directory | Description |
 |:---:|:---:|
 | svalbard_map.R | R script for general map of Svalbard used in Figure 2.1. |
 | QIIME2_16S.sh | QIIME2 workflow for processing of raw 16S rRNA sequences. |
