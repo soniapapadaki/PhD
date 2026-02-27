@@ -1,5 +1,5 @@
 ###############################################
-# ANCOM-BC Analysis (16S Family + Genus)
+# ANCOM-BC (16S Family + Genus)
 #
 # Description:
 #   Runs ANCOM-BC at family and genus levels, and generates custom plots for 
@@ -8,7 +8,6 @@
 # Notes:
 #   This script is adapted from:
 #   https://www.bioconductor.org/packages/release/bioc/vignettes/ANCOMBC/inst/doc/ANCOMBC2.html
-#
 ###############################################
 
 ### LOAD PACKAGES
