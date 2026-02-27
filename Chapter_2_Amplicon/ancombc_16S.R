@@ -1,3 +1,16 @@
+###############################################
+# ANCOM-BC Analysis (16S Family + Genus)
+#
+# Description:
+#   Runs ANCOM-BC at family and genus levels, and generates custom plots for 
+#   comparison of enriched taxa in endolith vs soil crust microbiomes.
+#
+# Notes:
+#   This script is adapted from:
+#   https://www.bioconductor.org/packages/release/bioc/vignettes/ANCOMBC/inst/doc/ANCOMBC2.html
+#
+###############################################
+
 ### LOAD PACKAGES
 
 library(dplyr)
