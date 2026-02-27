@@ -1,3 +1,12 @@
+###############################################
+# Appendix A Archaea Table
+#
+# Description:
+#   Generates a table summarizing the mean relative abundances of archaeal 
+#	phyla across sample types (endolith vs soil crust).
+#
+###############################################
+
 ### LOAD PACKAGES
 library(tidyverse)
 

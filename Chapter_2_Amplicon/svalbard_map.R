@@ -1,3 +1,11 @@
+###############################################
+# Svalbard map
+#
+# Description:
+#   Creates general map of Svalbard with option to add markers for sampling sites
+#
+###############################################
+
 ## LOAD PACKAGES
 
 library(ggplot2)
