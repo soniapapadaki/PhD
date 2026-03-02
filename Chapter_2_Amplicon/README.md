@@ -14,6 +14,6 @@ Code for Chapter 2 of my doctoral thesis: "Traces of Microbial Life and Activity
 | ancombc_16S.R | R script for differential abundance analysis in Figure 2.7 using 16S phyloseq object. |
 | ancombc_18S.R | R script for differential abundance analysis in Figure 2.8 using 18S phyloseq object. |
 | appendix_a_archaea.R | R script for mean relative abundances of archaea as shown in table A.2 in Appendix A. |
-| `elemental analyses` | R scripts for additional elemental analysis that didn't make it into the thesis. |
+| `elemental analyses` | R scripts for additional elemental analyses that didn't make it into the thesis. |
 
 
