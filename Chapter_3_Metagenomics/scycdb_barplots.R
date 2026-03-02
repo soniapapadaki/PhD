@@ -1,21 +1,37 @@
+###############################################
+# SULFUR CYCLING GENE ABUNDANCES 
+#
+# Description:
+#   Generates bar plots showing mean abundances of sulfur-cycling 
+#   genes (SCycDB) in gypsum endoliths, soil crusts, and beach 
+#   endoliths. Abundances are summed by metabolic pathway and 
+#   visualized with mean ± SD.
+#
+# Notes:
+#	Requires gene abundance table produced via DIAMOND BLASTx 
+#   functional annotation. Sulfur metabolism gene sequences 
+#	used for annotation are from SCycDB (Yu et al., 2021):
+#   https://onlinelibrary.wiley.com/doi/10.1111/1755-0998.13306
+###############################################
 
-
-setwd("~/Writing Up [WD]/Chapter 3 - Metagenomics/metagenomics figs/raw images/scycdb barplot")
+### LOAD PACKAGES
 
 library(dplyr)
 library(tidyr)
 library(ggplot2)
 library(stringr)
 
-# read your CSV
+### IMPORT AND CLEAN UP DATA
+
+# read CSV
 df <- read.csv("scyc_gene_abundances.csv", stringsAsFactors = FALSE)
 
-# Make sure sample columns are numeric
+# make sure sample columns are numeric
 sample_cols <- colnames(df)[!(colnames(df) %in% c("Gene", "Metabolic.pathway"))]
 
 df[sample_cols] <- lapply(df[sample_cols], function(x) as.numeric(as.character(x)))
 
-# Replace NAs with 0 (if NA means no abundance)
+# replace NAs with 0 
 df[sample_cols] <- lapply(df[sample_cols], function(x) ifelse(is.na(x), 0, x))
 
 # reshape into long format
@@ -29,15 +45,14 @@ df_long <- df %>%
 # Trim whitespace in pathway names
 df_long <- df_long %>%
   mutate(metabolic_pathway = trimws(Metabolic.pathway))
-
-###### sum abundances per pathway
-
+  
+### SUM ABUNDANCES PER PATHWAY
+  
 df_pathway <- df_long %>%
   group_by(metabolic_pathway, sample) %>%
   summarise(total_abundance = sum(abundance, na.rm = TRUE), .groups = "drop")
 
-
-#### add sample info ###
+### ADD SAMPLE INFO
 
 sample_type_lookup <- data.frame(
   sample = sample_cols,
@@ -47,7 +62,7 @@ sample_type_lookup <- data.frame(
 df_pathway <- df_pathway %>%
   left_join(sample_type_lookup, by = "sample")
 
-####calculate mean and SD per pathway per sample type
+### CALCULATE MEAN AND SD PER PATHWAY PER SAMPLE TYPE
 
 df_pathway_summary <- df_pathway %>%
   group_by(metabolic_pathway, sample_type) %>%
@@ -57,18 +72,16 @@ df_pathway_summary <- df_pathway %>%
     .groups = "drop"
   )
 
+### FILTER OUT UNWANTED METABOLIC PATHWAYS
 
-######plot
-
-# Filter out unwanted metabolic pathways
 df_plot <- df_pathway_summary %>%
   filter(!metabolic_pathway %in% "Assimilatory sulfate reduction/Dissimilatory sulfur reduction/oxidation")
 
+### PLOT
 
 df_plot <- df_plot %>%
   mutate(metabolic_pathway = str_wrap(metabolic_pathway, width = 30))
 
-# Plot
 ggplot(df_plot, 
        aes(x = sample_type, y = mean_abundance, fill = sample_type)) +
   geom_bar(stat = "identity", 
@@ -84,9 +97,9 @@ ggplot(df_plot,
     "Beach endoliths" = "#d95f02",
     "Soil crusts" = "#7570b3"
   )) +
-  scale_y_continuous(expand = expansion(mult = c(0, 0.05))) +  # 0% below, 5% above
+  scale_y_continuous(expand = expansion(mult = c(0, 0.05))) +  
   labs(
-    x = NULL,  # remove x-axis labels
+    x = NULL,  
     y = "Average gene copies per organism",
     fill = "Sample type"
   ) +
@@ -94,7 +107,7 @@ ggplot(df_plot,
   theme(
     axis.text.x = element_blank(),
     axis.ticks.x = element_blank(),
-    strip.background = element_rect(fill = "gray90"),  # optional: nicer facet header
+    strip.background = element_rect(fill = "gray90"), 
     strip.text = element_text(face = "bold", size = 8),
     panel.grid = element_blank(),
     axis.text.y = element_text(color = "black")

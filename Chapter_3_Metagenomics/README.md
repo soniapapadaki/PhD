@@ -32,7 +32,7 @@ scycdb barplots
 
 
 FIGURES 
-3.1 - rel ab 16S (SP 16S microeco phyloflash, any prerequisite files? needs a phyloseq object)
+3.1 - rel ab 16S (SP 16S microeco phyloflash, needs a phyloseq object)
 
 3.2 - same but 18S
 
