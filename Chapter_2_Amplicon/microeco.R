@@ -2,7 +2,7 @@
 # MICROECO 
 #
 # Description:
-#   Microbiome data analysis in microeco R packages using outputs from QIIME. 
+#   Microbiome data analysis in microeco R package using outputs from QIIME. 
 #   Produces relative abundance plots (phylum and family level), alpha diversity 
 #   box plots, and beta diversity plots (PCoA).
 #

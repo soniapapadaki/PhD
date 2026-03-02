@@ -2,7 +2,7 @@
 # SVALBARD MAP
 #
 # Description:
-#   Creates general map of Svalbard with option to add markers for sampling sites
+#   Creates general map of Svalbard with option to add markers for sampling sites.
 ###############################################
 
 ## LOAD PACKAGES
