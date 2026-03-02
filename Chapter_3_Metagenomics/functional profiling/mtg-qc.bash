@@ -1,3 +1,7 @@
+# NEOF’s Microbial Shotgun Genomics 2025 course
+
+
+
 #first set up directory "1-Raw" with symbolic links to raw data and change to that directory
 #activate shotgun_meta environment
 mamba activate shotgun_meta
