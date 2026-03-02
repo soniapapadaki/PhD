@@ -1,6 +1,14 @@
-# NEOF’s Microbial Shotgun Genomics 2025 course
-
-
+###############################################
+# 2) QUALITY CONTROL FOR METAGENOMES
+#
+# Description:
+#   Quality control workflow for metagenomes. Produces FastQC and
+#	MultiQC reports, and removes adaptors and low quality bases.
+#
+# Notes:
+#   This script is based on NEOF's Microbial Shotgun Genomics course:
+#   https://neof-workshops.github.io/Shotgun_ld5ug2/Course/01-Shotgun_metagenomics.html
+###############################################
 
 #first set up directory "1-Raw" with symbolic links to raw data and change to that directory
 #activate shotgun_meta environment

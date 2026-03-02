@@ -1,7 +1,20 @@
+###############################################
+# 3) FUNCTIONAL ANNOTATION USING HUMANN
+#
+# Description:
+#   Functional annotation using HUMAnN. Output can then be analysed 
+#	further for differential gene abundances between samples using 
+#	hclust2 and LefSe (see NEOF tutorial).
+#
+# Notes:
+#   This script is based on NEOF's Microbial Shotgun Genomics course:
+#   https://neof-workshops.github.io/Shotgun_ld5ug2/Course/01-Shotgun_metagenomics.html
+###############################################
+
 #activate biobakery and create new directory
 mamba activate biobakery
-mkdir 4-FunctionalProfiling
-cd 4-FunctionalProfiling
+mkdir 3-FunctionalProfiling
+cd 3-FunctionalProfiling
 
 #create folder for concatenated reads 
 mkdir concat_reads
